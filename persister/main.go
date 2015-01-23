@@ -3,7 +3,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	influxdbClient "github.com/influxdb/influxdb/client"
 	kafkaClient "github.com/stealthly/go_kafka_client"
 	"net/http"
@@ -18,9 +17,7 @@ const (
 
 func main() {
 
-	config, topic, numConsumers, graphiteConnect, graphiteFlushInterval := resolveConfig(consumer_config_file_name)
-
-	fmt.Println(config, topic, numConsumers, graphiteConnect, graphiteFlushInterval)
+	config, topic, _, _, _ := resolveConfig(consumer_config_file_name)
 
 	messageChannel := make(chan *kafkaClient.Message, 1000)
 
