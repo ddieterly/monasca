@@ -50,7 +50,11 @@ func main() {
 		panic(err)
 	}
 
+	serieMap := make(map[string][][]interface{})
+	var count int64
+
 	for {
+
 		msg := <-messageChannel
 
 		var data map[string]interface{}
@@ -67,23 +71,45 @@ func main() {
 		tenantId := meta["tenantId"].(string)
 		region := meta["region"].(string)
 
-		seriesName := tenantId + "?" + region + "&" + url.QueryEscape(name)
+		serieName := tenantId + "?" + region + "&" + url.QueryEscape(name)
 
 		for key, val := range dimensions {
-			seriesName += "&" + url.QueryEscape(key) + "=" + url.QueryEscape(val.(string))
+			serieName += "&" + url.QueryEscape(key) + "=" + url.QueryEscape(val.(string))
 		}
 
-		series := &influxdbClient.Series{
-			Name:    seriesName,
-			Columns: []string{"value", "time"},
-			Points: [][]interface{}{
-				{strconv.FormatFloat(value, 'f', -1, 64), timeStamp},
-			},
+		if serieMap[serieName] == nil {
+			serieMap[serieName] = make([][]interface{}, 0, 100)
 		}
 
-		if err := influxdbClientClient.WriteSeries([]*influxdbClient.Series{series}); err != nil {
-			panic(err)
+		serieMap[serieName] = append(serieMap[serieName], []interface{}{strconv.FormatFloat(value, 'f', -1, 64), timeStamp})
+
+		count++
+
+		if count >= 100 {
+
+			count = 0
+
+			series := make([]*influxdbClient.Series, 0)
+
+			for serieName, seriesPoints := range serieMap {
+
+				serie := &influxdbClient.Series{
+					Name:    serieName,
+					Columns: []string{"value", "time"},
+					Points:  seriesPoints,
+				}
+
+				series = append(series, serie)
+
+			}
+
+			if err := influxdbClientClient.WriteSeries(series); err != nil {
+				panic(err)
+			}
+
+			serieMap = make(map[string][][]interface{})
 		}
+
 	}
 
 }
