@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	influxdbClient "github.com/influxdb/influxdb/client"
 	kafkaClient "github.com/stealthly/go_kafka_client"
+	"io"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 )
@@ -16,6 +19,16 @@ const (
 )
 
 func main() {
+
+	file, err := os.OpenFile("persister.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalln("Failed to open log file:", err)
+	}
+
+	multi := io.MultiWriter(file, os.Stdout)
+
+	logger := log.New(multi, "Persister: ", log.LstdFlags|log.Lshortfile)
+	logger.Println("Hello World!")
 
 	config, topic, _, _, _ := resolveConfig(consumer_config_file_name)
 
