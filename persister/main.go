@@ -18,6 +18,8 @@ const (
 	persisterLogFileName    string = "persister.log"
 )
 
+type serieMap map[string][][]interface{}
+
 func main() {
 
 	var persisterConfig persisterConfig
@@ -58,32 +60,14 @@ func main() {
 		panic(err)
 	}
 
-	serieMap := make(map[string][][]interface{})
+	serieMap := make(serieMap)
 	var count int64
 
 	for {
 
 		msg := <-messageChannel
 
-		var data map[string]interface{}
-		if err := json.Unmarshal(msg.Value, &data); err != nil {
-			panic(err)
-		}
-
-		metric := data["metric"].(map[string]interface{})
-		name := metric["name"].(string)
-		dimensions := metric["dimensions"].(map[string]interface{})
-		timeStamp := metric["timestamp"].(float64)
-		value := metric["value"].(float64)
-		meta := data["meta"].(map[string]interface{})
-		tenantId := meta["tenantId"].(string)
-		region := meta["region"].(string)
-
-		serieName := tenantId + "?" + region + "&" + url.QueryEscape(name)
-
-		for key, val := range dimensions {
-			serieName += "&" + url.QueryEscape(key) + "=" + url.QueryEscape(val.(string))
-		}
+		serieName, value, timeStamp := parseMetric(msg)
 
 		serieMap[serieName] = append(serieMap[serieName], []interface{}{strconv.FormatFloat(value, 'f', -1, 64), timeStamp})
 
@@ -91,29 +75,59 @@ func main() {
 
 		if count >= persisterConfig.InfluxdbConfig.BatchSize {
 
+			writePointsToInfluxdb(serieMap, influxdbClientClient)
 			count = 0
-
-			series := make([]*influxdbClient.Series, 0)
-
-			for serieName, seriesPoints := range serieMap {
-
-				serie := &influxdbClient.Series{
-					Name:    serieName,
-					Columns: []string{"value", "time"},
-					Points:  seriesPoints,
-				}
-
-				series = append(series, serie)
-
-			}
-
-			if err := influxdbClientClient.WriteSeries(series); err != nil {
-				panic(err)
-			}
-
 			serieMap = make(map[string][][]interface{})
 		}
 
+	}
+
+}
+
+func parseMetric(metricMsg *kafkaClient.Message) (string, float64, float64) {
+
+	var metricDataMap map[string]interface{}
+	if err := json.Unmarshal(metricMsg.Value, &metricDataMap); err != nil {
+		l4g.Error(err)
+	}
+
+	metric := metricDataMap["metric"].(map[string]interface{})
+	name := metric["name"].(string)
+	dimensions := metric["dimensions"].(map[string]interface{})
+	timeStamp := metric["timestamp"].(float64)
+	value := metric["value"].(float64)
+	meta := metricDataMap["meta"].(map[string]interface{})
+	tenantId := meta["tenantId"].(string)
+	region := meta["region"].(string)
+
+	serieName := tenantId + "?" + region + "&" + url.QueryEscape(name)
+
+	for key, val := range dimensions {
+		serieName += "&" + url.QueryEscape(key) + "=" + url.QueryEscape(val.(string))
+	}
+
+	return serieName, value, timeStamp
+
+}
+
+func writePointsToInfluxdb(serieMap serieMap, influxdbClientClient *influxdbClient.Client) {
+
+	series := make([]*influxdbClient.Series, 0)
+
+	for serieName, seriesPoints := range serieMap {
+
+		serie := &influxdbClient.Series{
+			Name:    serieName,
+			Columns: []string{"value", "time"},
+			Points:  seriesPoints,
+		}
+
+		series = append(series, serie)
+
+	}
+
+	if err := influxdbClientClient.WriteSeries(series); err != nil {
+		panic(err)
 	}
 
 }
