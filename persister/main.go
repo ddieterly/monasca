@@ -18,7 +18,7 @@ const (
 
 func main() {
 
-	l4g.AddFilter("file", l4g.FINE, l4g.NewFileLogWriter("persister.log", false))
+	l4g.AddFilter("file", l4g.DEBUG, l4g.NewFileLogWriter("persister.log", false))
 
 	config, topic, _, _, _ := resolveConfig(consumer_config_file_name)
 
@@ -78,10 +78,6 @@ func main() {
 
 		for key, val := range dimensions {
 			serieName += "&" + url.QueryEscape(key) + "=" + url.QueryEscape(val.(string))
-		}
-
-		if serieMap[serieName] == nil {
-			serieMap[serieName] = make([][]interface{}, 0, 100)
 		}
 
 		serieMap[serieName] = append(serieMap[serieName], []interface{}{strconv.FormatFloat(value, 'f', -1, 64), timeStamp})
