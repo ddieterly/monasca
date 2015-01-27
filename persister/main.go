@@ -8,53 +8,24 @@ import (
 	kafkaClient "github.com/stealthly/go_kafka_client"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"time"
 )
 
 const (
-	consumer_config_file_name  string = "go_kafka_client_consumer.properties"
-	persister_config_file_name string = "persister.properties"
-	persiter_log_file_name     string = "persister.log"
+	consumerConfigFileName  string = "go_kafka_client_consumer.properties"
+	persisterConfigFileName string = "persister.properties"
+	persisterLogFileName    string = "persister.log"
 )
-
-type influxdbConfig struct {
-	BatchSize int64  `json:"batch_size"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
-	Database  string `json:"database"`
-	Host      string `json:"host"`
-}
-
-type persisterConfig struct {
-	InfluxdbConfig influxdbConfig `json:"influxdb"`
-}
-
-func readJSONConfigFile(fileName string, configType interface{}) {
-
-	f, err := os.Open(fileName)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
-	decoder := json.NewDecoder(f)
-
-	if decoder.Decode(configType) != nil {
-		panic(err)
-	}
-
-}
 
 func main() {
 
 	var persisterConfig persisterConfig
-	readJSONConfigFile(persister_config_file_name, &persisterConfig)
+	readJSONConfigFile(persisterConfigFileName, &persisterConfig)
 
-	l4g.AddFilter("file", l4g.DEBUG, l4g.NewFileLogWriter(persiter_log_file_name, false))
+	l4g.AddFilter("file", l4g.DEBUG, l4g.NewFileLogWriter(persisterLogFileName, false))
 
-	config, topic, _, _, _ := resolveConfig(consumer_config_file_name)
+	config, topic, _, _, _ := resolveConfig(consumerConfigFileName)
 
 	messageChannel := make(chan *kafkaClient.Message, 1000)
 
