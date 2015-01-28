@@ -33,10 +33,10 @@ func main() {
 
 	config, topic, _, _, _ := resolveConfig(consumerConfigFileName)
 
-	messageChannel := make(chan *kafkaClient.Message, 1000)
+	metricMessageChannel := make(chan *kafkaClient.Message, persisterConfig.MetricMessageChannelSize)
 
 	config.Strategy = func(_ *kafkaClient.Worker, msg *kafkaClient.Message, id kafkaClient.TaskId) kafkaClient.WorkerResult {
-		messageChannel <- msg
+		metricMessageChannel <- msg
 
 		return kafkaClient.NewSuccessfulResult(id)
 	}
@@ -69,9 +69,9 @@ func main() {
 
 	for {
 
-		msg := <-messageChannel
+		metricMsg := <-metricMessageChannel
 
-		serieName, value, timeStamp := parseMetric(msg)
+		serieName, value, timeStamp := parseMetric(metricMsg)
 
 		serieMap[serieName] = append(serieMap[serieName], []interface{}{strconv.FormatFloat(value, 'f', -1, 64), timeStamp})
 
@@ -86,28 +86,28 @@ func main() {
 
 func setUpLogging(persisterConfig *persisterConfigType) {
 
-	switch strings.ToLower(persisterConfig.LoggingConfig.Level) {
-	case "finest":
+	switch strings.ToUpper(persisterConfig.LoggingConfig.Level) {
+	case "FINEST":
 		l4g.AddFilter("file", l4g.FINEST, l4g.NewFileLogWriter(persisterLogFileName, false))
-	case "fine":
+	case "FINE":
 		l4g.AddFilter("file", l4g.FINE, l4g.NewFileLogWriter(persisterLogFileName, false))
-	case "debug":
+	case "DEBUG":
 		l4g.AddFilter("file", l4g.DEBUG, l4g.NewFileLogWriter(persisterLogFileName, false))
-	case "trace":
+	case "TRACE":
 		l4g.AddFilter("file", l4g.TRACE, l4g.NewFileLogWriter(persisterLogFileName, false))
-	case "info":
+	case "INFO":
 		l4g.AddFilter("file", l4g.INFO, l4g.NewFileLogWriter(persisterLogFileName, false))
-	case "warning":
+	case "WARNING":
 		l4g.AddFilter("file", l4g.WARNING, l4g.NewFileLogWriter(persisterLogFileName, false))
-	case "error":
+	case "ERROR":
 		l4g.AddFilter("file", l4g.ERROR, l4g.NewFileLogWriter(persisterLogFileName, false))
-	case "critical":
+	case "CRITICAL":
 		l4g.AddFilter("file", l4g.CRITICAL, l4g.NewFileLogWriter(persisterLogFileName, false))
 	default:
 		panic("No valid logging level (FINEST, FINE, DEBUG, TRACE, INFO, WARNING, ERROR, CRITICAL) specified in properties file")
 	}
 
-	l4g.Info("Logging level: %s", persisterConfig.LoggingConfig.Level)
+	l4g.Info("Logging level: %s", strings.ToUpper(persisterConfig.LoggingConfig.Level))
 }
 
 func parseMetric(metricMsg *kafkaClient.Message) (string, float64, float64) {

@@ -18,8 +18,9 @@ type influxdbConfigType struct {
 }
 
 type persisterConfigType struct {
-	LoggingConfig  loggingConfigType  `json:"logging"`
-	InfluxdbConfig influxdbConfigType `json:"influxdb"`
+	LoggingConfig            loggingConfigType  `json:"logging"`
+	InfluxdbConfig           influxdbConfigType `json:"influxdb"`
+	MetricMessageChannelSize int64              `json:"metric_message_channel_size"`
 }
 
 func readJSONConfigFile(fileName string, configType interface{}) {
