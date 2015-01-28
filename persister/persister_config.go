@@ -5,11 +5,11 @@ import (
 	"os"
 )
 
-type loggingConfig struct {
+type loggingConfigType struct {
 	Level string `json:"level"`
 }
 
-type influxdbConfig struct {
+type influxdbConfigType struct {
 	BatchSize int64  `json:"batch_size"`
 	Username  string `json:"username"`
 	Password  string `json:"password"`
@@ -17,9 +17,9 @@ type influxdbConfig struct {
 	Host      string `json:"host"`
 }
 
-type persisterConfig struct {
-	LoggingConfig  loggingConfig  `json:"logging"`
-	InfluxdbConfig influxdbConfig `json:"influxdb"`
+type persisterConfigType struct {
+	LoggingConfig  loggingConfigType  `json:"logging"`
+	InfluxdbConfig influxdbConfigType `json:"influxdb"`
 }
 
 func readJSONConfigFile(fileName string, configType interface{}) {

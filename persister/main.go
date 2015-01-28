@@ -19,12 +19,15 @@ const (
 	persisterLogFileName    string = "persister.log"
 )
 
-type serieMap map[string][][]interface{}
+type serieMapType map[string][][]interface{}
+
+var persisterConfig persisterConfigType
+
+func init() {
+	readJSONConfigFile(persisterConfigFileName, &persisterConfig)
+}
 
 func main() {
-
-	var persisterConfig persisterConfig
-	readJSONConfigFile(persisterConfigFileName, &persisterConfig)
 
 	setUpLogging(&persisterConfig)
 
@@ -61,7 +64,7 @@ func main() {
 		panic(err)
 	}
 
-	serieMap := make(serieMap)
+	serieMap := make(serieMapType)
 	var count int64
 
 	for {
@@ -76,12 +79,12 @@ func main() {
 
 			writePointsToInfluxdb(serieMap, influxdbClientClient)
 			count = 0
-			serieMap = make(map[string][][]interface{})
+			serieMap = make(serieMapType)
 		}
 	}
 }
 
-func setUpLogging(persisterConfig *persisterConfig) {
+func setUpLogging(persisterConfig *persisterConfigType) {
 
 	switch strings.ToLower(persisterConfig.LoggingConfig.Level) {
 	case "finest":
@@ -103,6 +106,8 @@ func setUpLogging(persisterConfig *persisterConfig) {
 	default:
 		panic("No valid logging level (FINEST, FINE, DEBUG, TRACE, INFO, WARNING, ERROR, CRITICAL) specified in properties file")
 	}
+
+	l4g.Info("Logging level: %s", persisterConfig.LoggingConfig.Level)
 }
 
 func parseMetric(metricMsg *kafkaClient.Message) (string, float64, float64) {
@@ -131,7 +136,7 @@ func parseMetric(metricMsg *kafkaClient.Message) (string, float64, float64) {
 
 }
 
-func writePointsToInfluxdb(serieMap serieMap, influxdbClientClient *influxdbClient.Client) {
+func writePointsToInfluxdb(serieMap serieMapType, influxdbClientClient *influxdbClient.Client) {
 
 	series := make([]*influxdbClient.Series, 0)
 
