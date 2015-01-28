@@ -72,17 +72,13 @@ func main() {
 
 		serieMap[serieName] = append(serieMap[serieName], []interface{}{strconv.FormatFloat(value, 'f', -1, 64), timeStamp})
 
-		count++
-
-		if count >= persisterConfig.InfluxdbConfig.BatchSize {
+		if count++; count >= persisterConfig.InfluxdbConfig.BatchSize {
 
 			writePointsToInfluxdb(serieMap, influxdbClientClient)
 			count = 0
 			serieMap = make(map[string][][]interface{})
 		}
-
 	}
-
 }
 
 func setUpLogging(persisterConfig *persisterConfig) {
