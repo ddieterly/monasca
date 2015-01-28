@@ -5,6 +5,10 @@ import (
 	"os"
 )
 
+type loggingConfig struct {
+	Level string `json:"level"`
+}
+
 type influxdbConfig struct {
 	BatchSize int64  `json:"batch_size"`
 	Username  string `json:"username"`
@@ -14,6 +18,7 @@ type influxdbConfig struct {
 }
 
 type persisterConfig struct {
+	LoggingConfig  loggingConfig  `json:"logging"`
 	InfluxdbConfig influxdbConfig `json:"influxdb"`
 }
 

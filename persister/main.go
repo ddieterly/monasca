@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -25,7 +26,7 @@ func main() {
 	var persisterConfig persisterConfig
 	readJSONConfigFile(persisterConfigFileName, &persisterConfig)
 
-	l4g.AddFilter("file", l4g.DEBUG, l4g.NewFileLogWriter(persisterLogFileName, false))
+	setUpLogging(&persisterConfig)
 
 	config, topic, _, _, _ := resolveConfig(consumerConfigFileName)
 
@@ -82,6 +83,30 @@ func main() {
 
 	}
 
+}
+
+func setUpLogging(persisterConfig *persisterConfig) {
+
+	switch strings.ToLower(persisterConfig.LoggingConfig.Level) {
+	case "finest":
+		l4g.AddFilter("file", l4g.FINEST, l4g.NewFileLogWriter(persisterLogFileName, false))
+	case "fine":
+		l4g.AddFilter("file", l4g.FINE, l4g.NewFileLogWriter(persisterLogFileName, false))
+	case "debug":
+		l4g.AddFilter("file", l4g.DEBUG, l4g.NewFileLogWriter(persisterLogFileName, false))
+	case "trace":
+		l4g.AddFilter("file", l4g.TRACE, l4g.NewFileLogWriter(persisterLogFileName, false))
+	case "info":
+		l4g.AddFilter("file", l4g.INFO, l4g.NewFileLogWriter(persisterLogFileName, false))
+	case "warning":
+		l4g.AddFilter("file", l4g.WARNING, l4g.NewFileLogWriter(persisterLogFileName, false))
+	case "error":
+		l4g.AddFilter("file", l4g.ERROR, l4g.NewFileLogWriter(persisterLogFileName, false))
+	case "critical":
+		l4g.AddFilter("file", l4g.CRITICAL, l4g.NewFileLogWriter(persisterLogFileName, false))
+	default:
+		panic("No valid logging level (FINEST, FINE, DEBUG, TRACE, INFO, WARNING, ERROR, CRITICAL) specified in properties file")
+	}
 }
 
 func parseMetric(metricMsg *kafkaClient.Message) (string, float64, float64) {
