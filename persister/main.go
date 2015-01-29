@@ -8,6 +8,7 @@ import (
 	kafkaClient "github.com/stealthly/go_kafka_client"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -69,11 +70,11 @@ func main() {
 
 	for {
 
-		metricMsg := <-metricMessageChannel
+		msg := <-metricMessageChannel
 
-		serieName, value, timeStamp := parseMetric(metricMsg)
+		serieName, value, timeStamp := parseMetric(msg.Value)
 
-		serieMap[serieName] = append(serieMap[serieName], []interface{}{strconv.FormatFloat(value, 'f', -1, 64), timeStamp})
+		serieMap[serieName] = append(serieMap[serieName], []interface{}{value, timeStamp})
 
 		if count++; count >= persisterConfig.InfluxdbConfig.BatchSize {
 
@@ -110,27 +111,40 @@ func setUpLogging(persisterConfig *persisterConfigType) {
 	l4g.Info("Logging level: %s", strings.ToUpper(persisterConfig.LoggingConfig.Level))
 }
 
-func parseMetric(metricMsg *kafkaClient.Message) (string, float64, float64) {
+func parseMetric(metricMsg []byte) (serieName string, value string, timeStamp float64) {
+
+	l4g.Debug("Metric message: %s", string(metricMsg))
 
 	var metricDataMap map[string]interface{}
-	if err := json.Unmarshal(metricMsg.Value, &metricDataMap); err != nil {
+	if err := json.Unmarshal(metricMsg, &metricDataMap); err != nil {
 		l4g.Error(err)
 	}
 
 	metric := metricDataMap["metric"].(map[string]interface{})
 	name := metric["name"].(string)
 	dimensions := metric["dimensions"].(map[string]interface{})
-	timeStamp := metric["timestamp"].(float64)
-	value := metric["value"].(float64)
+	timeStamp = metric["timestamp"].(float64)
+	value = strconv.FormatFloat(metric["value"].(float64), 'f', -1, 64)
 	meta := metricDataMap["meta"].(map[string]interface{})
 	tenantId := meta["tenantId"].(string)
 	region := meta["region"].(string)
 
-	serieName := tenantId + "?" + region + "&" + url.QueryEscape(name)
+	serieName = tenantId + "?" + region + "&" + url.QueryEscape(name)
 
-	for key, val := range dimensions {
-		serieName += "&" + url.QueryEscape(key) + "=" + url.QueryEscape(val.(string))
+	// Sort the dimension keys.
+	var keys []string
+	for key := range dimensions {
+		keys = append(keys, key)
 	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		serieName += "&" + url.QueryEscape(key) + "=" + url.QueryEscape(dimensions[key].(string))
+	}
+
+	l4g.Debug("Serie name: %s", serieName)
+	l4g.Debug("Serie value: %s", value)
+	l4g.Debug("Serie timestamp: %s", strconv.FormatFloat(timeStamp, 'f', -1, 64))
 
 	return serieName, value, timeStamp
 
